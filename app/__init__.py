@@ -1,32 +1,26 @@
-# __init__.py
-from flask import Flask, session
-import os
-import redis
-from rq import Queue
-from worker import conn
-from tasks import background_task  # Import the task from the separate module
+from flask import Flask, request
+from .celery import celery
+from .tasks import scrape_url
 
-app = Flask(__name__)
-app.secret_key = os.urandom(24)
-cache = redis.Redis(host='localhost', port=6379)
+def create_app():
+    app = Flask(__name__)
+    app.config.update(
+        CELERY_BROKER_URL='redis://localhost:6379/0',
+        CELERY_RESULT_BACKEND='redis://localhost:6379/0'
+    )
 
-# rq queue
-q = Queue(connection=conn)
+    @app.route('/')
+    def home():
+        return "Hello World!"
 
-@app.route('/')
-def home():
-    return "Hello World!"
+    @app.route('/scrape', methods=['GET'])
+    def scrape():
+        url = request.args.get('url')
+        if not url:
+            return "No URL provided.", 400
 
-@app.route('/visit')
-def visit():
-    if 'visit_count' in session:
-        session['visit_count'] = session.get('visit_count') + 1
-    else:
-        session['visit_count'] = 1
-    
-    job = q.enqueue(background_task, str(session['visit_count']))
-    return f"Visit count: {session['visit_count']}, job id: {job.id}"
+        # Enqueue the scraping task
+        job = scrape_url.apply_async(args=[url])
+        return f"Scraping URL: {url}, job id: {job.id}"
 
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8080, debug=True)
-
+    return app
