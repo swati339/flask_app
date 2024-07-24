@@ -1,12 +1,14 @@
 from celery import Celery
 
-def make_celery():
+def create_celery_app():
     celery = Celery(
         'flask_app',
         broker='redis://localhost:6379/0',
         backend='redis://localhost:6379/0'
     )
+    celery.conf.update(
+        result_backend='redis://localhost:6379/0'
+    )
     return celery
 
-# Create the Celery instance
-celery = make_celery()
+celery = create_celery_app()
