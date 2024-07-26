@@ -1,16 +1,15 @@
-from rq import get_current_job
+from rq import Queue
+from redis import Redis
 import requests
 
+# Connect to Redis
+redis_conn = Redis()
+task_queue = Queue(connection=redis_conn)
+
 def process_url(url):
-    job = get_current_job()
     try:
         response = requests.get(url)
-        result = response.text[:200]  # Return the first 200 characters of the content
-        job.meta['result'] = result
-        job.save_meta()
+        result = response.status_code
         return result
     except Exception as e:
-        job.meta['error'] = str(e)
-        job.save_meta()
-        return None
-
+        return str(e)
