@@ -1,0 +1,5 @@
+Flask
+pytest
+pytest-flask
+redis
+rq
