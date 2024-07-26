@@ -1,11 +1,12 @@
-from flask import Blueprint, request, jsonify, current_app, make_response, session
+from flask import Blueprint, request, jsonify, current_app,session
 from app.tasks import process_url
+import uuid
 
 bp = Blueprint('main', __name__)
 
 @bp.route('/')
 def index():
-     session['user_id'] = '1' 
+     session['user_id'] = str(uuid.uuid4())
      return jsonify({'message': 'Welcome to the Flask App'})
 
 @bp.route('/submit', methods=['GET'])
