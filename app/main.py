@@ -1,11 +1,13 @@
-from flask import Blueprint, request, jsonify, current_app
+from flask import Blueprint, request, jsonify, current_app, make_response
 from app.tasks import process_url
 
 bp = Blueprint('main', __name__)
 
 @bp.route('/')
 def index():
-    return jsonify({'message': 'Welcome to the Flask App'})
+    resp = make_response(jsonify({'message': 'Welcome to the Flask App'}))
+    resp.set_cookie('user_id', '1')  # Set default user ID; ideally, this would be set when user logs in
+    return resp
 
 @bp.route('/submit', methods=['GET'])
 def submit_url():
