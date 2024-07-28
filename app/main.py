@@ -12,7 +12,7 @@ bp = Blueprint('main', __name__)
 def index():
     if 'user_id' not in session:
         session['user_id'] = str(uuid.uuid4())
-    return jsonify({'message': 'Welcome to the Flask App', 'user_id': session['user_id']})
+    return  ('Welcome to the Flask App')
 
 @bp.route('/submit', methods=['GET'])
 def submit_url():
@@ -21,13 +21,10 @@ def submit_url():
     if not user_id or not url:
         return jsonify({'message': 'User ID or URL not provided'}), 400
 
-    user_key = f"user:{user_id}:urls"
+    job_id = f"{user_id}:{uuid.uuid5(uuid.NAMESPACE_URL, url)}"
     try:
-        job = current_app.task_queue.enqueue(process_url, url)
-        
-        current_app.redis.hset(user_key, url, job.get_id())
-        
-        return jsonify({'message': 'URL submitted successfully!', 'job_id': job.get_id()})
+        job = current_app.task_queue.enqueue(process_url, url, job_id=job_id)
+        return jsonify({'message': 'URL submitted successfully!', 'job_id': job_id})
     except redis.RedisError as e:
         logging.error(f"Redis error: {e}")
         return jsonify({'message': 'Failed to submit URL'}), 500
@@ -54,15 +51,12 @@ def task_status():
     if not user_id or not url:
         return jsonify({'message': 'User ID or URL not provided'}), 400
 
-    user_key = f"user:{user_id}:urls"
+    job_id = f"{user_id}:{uuid.uuid5(uuid.NAMESPACE_URL, url)}"
     try:
-        job_id = current_app.redis.hget(user_key, url)
-        if job_id:
-            job = Job.fetch(job_id.decode('utf-8'), connection=current_app.redis)
-            status = job.get_status()
-            result = job.result if job.is_finished else None
-            return jsonify({'job_id': job_id.decode('utf-8'), 'status': status, 'result': result})
-        return jsonify({'message': 'URL not found'}), 404
+        job = Job.fetch(job_id, connection=current_app.redis)
+        status = job.get_status()
+        result = job.result if job.is_finished else None
+        return jsonify({'job_id': job_id, 'status': status, 'result': result})
     except redis.RedisError as e:
         logging.error(f"Redis error: {e}")
         return jsonify({'message': 'Failed to retrieve task status'}), 500
